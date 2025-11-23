@@ -1360,6 +1360,26 @@ class AnnotationEditorUIManager {
     this.highlightSelection(methodOfCreation, /* comment */ true);
   }
 
+  copySelection(methodOfCreation = "") {
+    const selection = document.getSelection();
+    if (!selection || selection.isCollapsed) {
+      return;
+    }
+
+    const selectedText = selection.toString();
+    if (!selectedText) {
+      return;
+    }
+
+    // Copy to clipboard using the Clipboard API
+    navigator.clipboard.writeText(selectedText).catch(() => {
+      // Silently fail if clipboard access is denied
+    });
+
+    // Hide the floating toolbar after copying
+    this.#floatingToolbar?.hide();
+  }
+
   #displayFloatingToolbar() {
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed) {

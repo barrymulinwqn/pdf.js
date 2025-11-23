@@ -309,6 +309,15 @@ class FloatingToolbar {
       }
     );
 
+    this.#makeButton(
+      "copyButton",
+      `pdfjs-copy-floating-button`,
+      "pdfjs-copy-floating-button-label",
+      () => {
+        this.#uiManager.copySelection("floating_button");
+      }
+    );
+
     return editToolbar;
   }
 
