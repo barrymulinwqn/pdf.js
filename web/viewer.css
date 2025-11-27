@@ -123,6 +123,7 @@
   --toolbarButton-viewOutline-icon: url(images/toolbarButton-viewOutline.svg);
   --toolbarButton-viewAttachments-icon: url(images/toolbarButton-viewAttachments.svg);
   --toolbarButton-viewLayers-icon: url(images/toolbarButton-viewLayers.svg);
+  --toolbarButton-viewFilter-icon: url(images/toolbarButton-viewFilter.svg);
   --toolbarButton-currentOutlineItem-icon: url(images/toolbarButton-currentOutlineItem.svg);
   --toolbarButton-search-icon: url(images/toolbarButton-search.svg);
   --findbarButton-previous-icon: url(images/findbarButton-previous.svg);
@@ -377,6 +378,10 @@ body {
 
     #viewLayers::before {
       mask-image: var(--toolbarButton-viewLayers-icon);
+    }
+
+    #viewFilter::before {
+      mask-image: var(--toolbarButton-viewFilter-icon);
     }
   }
 

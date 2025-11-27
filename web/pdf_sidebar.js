@@ -54,6 +54,8 @@ const UI_NOTIFICATION_CLASS = "pdfSidebarNotification";
  *   the attachments view.
  * @property {HTMLButtonElement} layersButton - The button used to show
  *   the layers view.
+ * @property {HTMLButtonElement} filterButton - The button used to show
+ *   the filter view.
  * @property {HTMLDivElement} thumbnailView - The container in which
  *   the thumbnails are placed.
  * @property {HTMLDivElement} outlineView - The container in which
@@ -62,6 +64,8 @@ const UI_NOTIFICATION_CLASS = "pdfSidebarNotification";
  *   the attachments are placed.
  * @property {HTMLDivElement} layersView - The container in which
  *   the layers are placed.
+ * @property {HTMLDivElement} filterView - The container in which
+ *   the filters are placed.
  * @property {HTMLButtonElement} currentOutlineItemButton - The button used to
  *   find the current outline item.
  */
@@ -100,11 +104,13 @@ class PDFSidebar {
     this.outlineButton = elements.outlineButton;
     this.attachmentsButton = elements.attachmentsButton;
     this.layersButton = elements.layersButton;
+    this.filterButton = elements.filterButton;
 
     this.thumbnailView = elements.thumbnailView;
     this.outlineView = elements.outlineView;
     this.attachmentsView = elements.attachmentsView;
     this.layersView = elements.layersView;
+    this.filterView = elements.filterView;
 
     this._currentOutlineItemButton = elements.currentOutlineItemButton;
 
@@ -124,6 +130,7 @@ class PDFSidebar {
     this.outlineButton.disabled = false;
     this.attachmentsButton.disabled = false;
     this.layersButton.disabled = false;
+    this.filterButton.disabled = false;
     this._currentOutlineItemButton.disabled = true;
   }
 
@@ -195,6 +202,11 @@ class PDFSidebar {
           return;
         }
         break;
+      case SidebarView.FILTER:
+        if (this.filterButton.disabled) {
+          return;
+        }
+        break;
       default:
         console.error(`PDFSidebar.switchView: "${view}" is not a valid view.`);
         return;
@@ -223,6 +235,11 @@ class PDFSidebar {
       this.layersButton,
       view === SidebarView.LAYERS,
       this.layersView
+    );
+    toggleCheckedBtn(
+      this.filterButton,
+      view === SidebarView.FILTER,
+      this.filterView
     );
 
     if (forceOpen && !this.isOpen) {
@@ -358,6 +375,10 @@ class PDFSidebar {
     });
     this.layersButton.addEventListener("dblclick", () => {
       eventBus.dispatch("resetlayers", { source: this });
+    });
+
+    this.filterButton.addEventListener("click", () => {
+      this.switchView(SidebarView.FILTER);
     });
 
     // Buttons for view-specific options.

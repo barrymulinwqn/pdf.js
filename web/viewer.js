@@ -115,11 +115,13 @@ function getViewerConfiguration() {
       outlineButton: document.getElementById("viewOutline"),
       attachmentsButton: document.getElementById("viewAttachments"),
       layersButton: document.getElementById("viewLayers"),
+      filterButton: document.getElementById("viewFilter"),
       // Views
       thumbnailView: document.getElementById("thumbnailView"),
       outlineView: document.getElementById("outlineView"),
       attachmentsView: document.getElementById("attachmentsView"),
       layersView: document.getElementById("layersView"),
+      filterView: document.getElementById("filterView"),
       // View-specific options
       currentOutlineItemButton: document.getElementById("currentOutlineItem"),
     },
