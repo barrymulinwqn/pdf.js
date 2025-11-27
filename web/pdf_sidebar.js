@@ -242,6 +242,13 @@ class PDFSidebar {
       this.filterView
     );
 
+    // Show thumbnailView when filter view is active
+    if (view === SidebarView.FILTER) {
+      this.thumbnailView.classList.remove("hidden");
+    } else if (view !== SidebarView.THUMBS) {
+      this.thumbnailView.classList.add("hidden");
+    }
+
     if (forceOpen && !this.isOpen) {
       this.open();
       return; // Opening will trigger rendering and dispatch the event.
