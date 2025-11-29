@@ -143,6 +143,10 @@ class Toolbar {
           },
         },
       },
+      {
+        element: options.saveSelectionButton,
+        eventName: "saveselectionasjson",
+      },
     ];
 
     // Bind the event listeners for click and various other actions.

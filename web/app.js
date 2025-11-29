@@ -1321,6 +1321,105 @@ const PDFViewerApplication = {
     classList.remove("wait");
   },
 
+  async saveSelectionAsJson() {
+    try {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        console.warn("No text selected");
+        return;
+      }
+
+      const selectionData = [];
+      const range = selection.getRangeAt(0);
+
+      // Find all text layer spans within the selection
+      const container = range.commonAncestorContainer;
+      const textLayerDivs = container.nodeType === Node.ELEMENT_NODE
+        ? container.querySelectorAll?.('.textLayer') || []
+        : container.parentElement?.closest('.page')?.querySelectorAll('.textLayer') || [];
+
+      // If no text layer found, try to find from the selection itself
+      let pageElement = null;
+      if (range.startContainer.nodeType === Node.TEXT_NODE) {
+        pageElement = range.startContainer.parentElement?.closest('.page');
+      } else {
+        pageElement = range.startContainer.closest?.('.page');
+      }
+
+      if (!pageElement) {
+        console.warn("Could not find page element");
+        return;
+      }
+
+      const pageNumber = parseInt(pageElement.getAttribute('data-page-number'), 10);
+      const textLayer = pageElement.querySelector('.textLayer');
+
+      if (!textLayer) {
+        console.warn("Could not find text layer");
+        return;
+      }
+
+      // Get selected text
+      const selectedText = selection.toString().trim();
+
+      if (!selectedText) {
+        console.warn("No text content in selection");
+        return;
+      }
+
+      // Get bounding rect of the selection
+      const selectionRect = range.getBoundingClientRect();
+      const textLayerRect = textLayer.getBoundingClientRect();
+
+      // Get the PDF page view to convert coordinates
+      const pageView = this.pdfViewer.getPageView(pageNumber - 1);
+      if (!pageView) {
+        console.warn("Could not find page view");
+        return;
+      }
+
+      // Convert screen coordinates to PDF coordinates
+      const x = selectionRect.left - textLayerRect.left;
+      const y = selectionRect.top - textLayerRect.top;
+      const width = selectionRect.width;
+      const height = selectionRect.height;
+
+      // Convert to PDF page coordinates
+      const pdfCoords = pageView.getPagePoint(x, y);
+      const pdfCoordsEnd = pageView.getPagePoint(x + width, y + height);
+
+      // Create location array [x, y, width, height] in PDF coordinates
+      const location = [
+        Math.round(pdfCoords[0]),
+        Math.round(pdfCoords[1]),
+        Math.round(pdfCoordsEnd[0] - pdfCoords[0]),
+        Math.round(pdfCoordsEnd[1] - pdfCoords[1])
+      ];
+
+      const data = {
+        page: pageNumber,
+        text: selectedText,
+        location: location
+      };
+
+      // Download as JSON file
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `selection-page${pageNumber}-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log("Selection saved:", data);
+    } catch (error) {
+      console.error("Error saving selection as JSON:", error);
+    }
+  },
+
   /**
    * Report the error; used for errors affecting loading and/or parsing of
    * the entire PDF document.
@@ -2097,6 +2196,7 @@ const PDFViewerApplication = {
     );
     eventBus._on("print", this.triggerPrinting.bind(this), opts);
     eventBus._on("download", this.downloadOrSave.bind(this), opts);
+    eventBus._on("saveselectionasjson", this.saveSelectionAsJson.bind(this), opts);
     eventBus._on("firstpage", () => (this.page = 1), opts);
     eventBus._on("lastpage", () => (this.page = this.pagesCount), opts);
     eventBus._on("nextpage", () => pdfViewer.nextPage(), opts);

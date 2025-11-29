@@ -70,6 +70,7 @@ function getViewerConfiguration() {
       editorSignatureParamsToolbar: document.getElementById(
         "editorSignatureParamsToolbar"
       ),
+      saveSelectionButton: document.getElementById("saveSelectionButton"),
       download: document.getElementById("downloadButton"),
     },
     secondaryToolbar: {

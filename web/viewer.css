@@ -572,6 +572,10 @@ body {
   mask-image: var(--toolbarButton-editorSignature-icon);
 }
 
+#saveSelectionButton::before {
+  mask-image: var(--toolbarButton-download-icon);
+}
+
 #printButton::before {
   mask-image: var(--toolbarButton-print-icon);
 }
