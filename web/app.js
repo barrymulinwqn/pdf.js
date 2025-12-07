@@ -206,6 +206,12 @@ const PDFViewerApplication = {
     } catch (ex) {
       console.error("initialize:", ex);
     }
+    
+    // Parse query string parameters (like disableAutoFetch)
+    if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
+      this._parseQueryParams();
+    }
+    
     if (AppOptions.get("pdfBugEnabled")) {
       await this._parseHashParams();
     }
@@ -274,6 +280,38 @@ const PDFViewerApplication = {
 
     this._initializedCapability.settled = true;
     this._initializedCapability.resolve();
+  },
+
+  /**
+   * Parse query string parameters (not hash parameters).
+   * @private
+   */
+  _parseQueryParams() {
+    const queryString = document.location.search.substring(1);
+    if (!queryString) {
+      return;
+    }
+    const params = parseQueryString(queryString);
+
+    // Parameters that can be handled automatically from query string
+    const opts = {
+      disableAutoFetch: x => x === "true",
+      disableFontFace: x => x === "true",
+      disableHistory: x => x === "true",
+      disableRange: x => x === "true",
+      disableStream: x => x === "true",
+      verbosity: x => x | 0,
+    };
+
+    for (const name in opts) {
+      const check = opts[name],
+        key = name.toLowerCase();
+
+      if (params.has(key)) {
+        AppOptions.set(name, check(params.get(key)));
+        console.log(`PDF.js: Set ${name} = ${check(params.get(key))} from query string`);
+      }
+    }
   },
 
   /**
