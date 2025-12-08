@@ -1,0 +1,62 @@
+[
+  {
+    "location": [
+      54,
+      589,
+      239,
+      -83
+    ],
+    "page": 10,
+    "text": "Calling external functions from TraceMonkey is potentially dif-\nﬁcult because traces do not update the interpreter state until exit-\ning. In particular, external functions may need the call stack or the\nglobal variables, but they may be out of date.\nFor the out-of-date call stack problem, we refactored some of\nthe interpreter API implementation functions to re-materialize the\ninterpreter call stack on demand.\nWe developed a C++ static analysis and"
+  },
+  {
+    "location": [
+      315,
+      186,
+      239,
+      -102
+    ],
+    "page": 4,
+    "text": "For example, the search might ﬁnds the value of\no.x in the prototype of o, which uses a shared hash-table represen-\ntation that places x in slot 2 of a property vector. Then the recorded\ncan generate LIR that reads o.x with just two or three loads: one to\nget the prototype, possibly one to get the property value vector, and\none more to get slot 2 from the vector. This is a vast simpliﬁcation\nand speedup compared to the original interpreter code. Inheritance\nrelationships and object representations can change during execu-\ntion, so the simpliﬁed code requires guard instructions that ensure\nthe object representation is the same. In TraceMonkey, objects’ rep-"
+  },
+  {
+    "location": [
+      315,
+      572,
+      239,
+      -53
+    ],
+    "page": 6,
+    "text": "igure 5. A tree with two traces, a trunk trace and one branch\ntrace. The trunk trace contains a guard to which a branch trace was\nattached. The branch trace contain a guard that may fail and trigger\na side exit. Both the trunk and the branch trace loop back to the tree\nanchor, which is the beginning of the trace tree."
+  },
+  {
+    "location": [
+      54,
+      432,
+      501,
+      -122
+    ],
+    "page": 11,
+    "text": "Google’s V8 JS compiler. Our system generates particularly efﬁcient code for programs that beneﬁt most from\ntype specialization, which includes SunSpider Benchmark programs that perform bit manipulation. We type-specialize the code in question\nto use integer arithmetic, which substantially improves performance. For one of the benchmark programs we execute 25 times faster than\nthe SpiderMonkey interpreter, and almost 5 times faster than V8 and SFX. For a large number of benchmarks all three VMs produce similar\nresults. We perform worst on benchmark programs that we do not trace and instead fall back onto the interpreter. This includes the recursive\nbenchmarks access-binary-trees and control-flow-recursive, for which we currently don’t generate any native code.\nIn particular, the bitops benchmarks are short programs that per-\nform many bitwise operations, so TraceMonkey can cover the en-\ntire program with 1 or 2 traces that operate on integers. TraceMon-\nkey runs all the other programs in this set almost entirely as na"
+  },
+  {
+    "location": [
+      54,
+      370,
+      239,
+      -43
+    ],
+    "page": 12,
+    "text": "he total execution time in processor\nclock cycles by the number of bytecodes executed in the base\ninterpreter shows that on average, a bytecode executes in about\n35 cycles. Native traces take about 9 cycles per bytecode, a 3.9"
+  },
+  {
+    "location": [
+      315,
+      504,
+      239,
+      -49
+    ],
+    "page": 13,
+    "text": "onclusions\nThis paper described how to run dynamic languages efﬁciently by\nrecording hot traces and generating type-specialized native code.\nOur techniq"
+  }
+]

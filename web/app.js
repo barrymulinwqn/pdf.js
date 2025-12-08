@@ -81,6 +81,8 @@ import { PDFCursorTools } from "web-pdf_cursor_tools";
 import { PDFDocumentProperties } from "web-pdf_document_properties";
 import { PDFFindBar } from "web-pdf_find_bar";
 import { PDFFindController } from "./pdf_find_controller.js";
+import { PDFFilterViewer } from "./pdf_filter_viewer.js";
+import { FilterHighlightOverlay } from "./filter_highlight_overlay.js";
 import { PDFHistory } from "./pdf_history.js";
 import { PDFLayerViewer } from "web-pdf_layer_viewer";
 import { PDFOutlineViewer } from "web-pdf_outline_viewer";
@@ -142,6 +144,8 @@ const PDFViewerApplication = {
   pdfAttachmentViewer: null,
   /** @type {PDFLayerViewer} */
   pdfLayerViewer: null,
+  /** @type {PDFFilterViewer} */
+  pdfFilterViewer: null,
   /** @type {PDFCursorTools} */
   pdfCursorTools: null,
   /** @type {PDFScriptingManager} */
@@ -792,6 +796,17 @@ const PDFViewerApplication = {
         eventBus,
         l10n,
       });
+    }
+
+    if (appConfig.sidebar?.filterView) {
+      this.pdfFilterViewer = new PDFFilterViewer({
+        container: appConfig.sidebar.filterView,
+        eventBus,
+        linkService: this.pdfLinkService,
+      });
+
+      // Initialize the filter highlight overlay manager
+      this.filterHighlightOverlay = new FilterHighlightOverlay(eventBus);
     }
 
     if (appConfig.sidebar) {
@@ -1767,6 +1782,11 @@ const PDFViewerApplication = {
           this.pdfLayerViewer.render({ optionalContentConfig, pdfDocument });
         });
       }
+      if (this.pdfFilterViewer) {
+        // Load highlights when document is ready, especially important
+        // for page refresh when filter view is already active
+        this.pdfFilterViewer.loadHighlights();
+      }
     });
 
     this._initializePageLabels(pdfDocument);
@@ -2215,6 +2235,17 @@ const PDFViewerApplication = {
     eventBus._on("scalechanging", onScaleChanging.bind(this), opts);
     eventBus._on("rotationchanging", onRotationChanging.bind(this), opts);
     eventBus._on("sidebarviewchanged", onSidebarViewChanged.bind(this), opts);
+    eventBus._on("filterviewactivated", () => {
+      this.pdfFilterViewer?.loadHighlights();
+    }, opts);
+
+    // Also load highlights when sidebar view changes to filter
+    eventBus._on("sidebarviewchanged", (evt) => {
+      if (evt.view === 4) { // SidebarView.FILTER = 4
+        this.pdfFilterViewer?.loadHighlights();
+      }
+    }, opts);
+
     eventBus._on("pagemode", onPageMode.bind(this), opts);
     eventBus._on("namedaction", onNamedAction.bind(this), opts);
     eventBus._on(

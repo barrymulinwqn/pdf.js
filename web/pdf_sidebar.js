@@ -244,7 +244,7 @@ class PDFSidebar {
 
     // Show thumbnailView when filter view is active
     if (view === SidebarView.FILTER) {
-      this.thumbnailView.classList.remove("hidden");
+      // this.thumbnailView.classList.remove("hidden");
     } else if (view !== SidebarView.THUMBS) {
       this.thumbnailView.classList.add("hidden");
     }
@@ -386,6 +386,8 @@ class PDFSidebar {
 
     this.filterButton.addEventListener("click", () => {
       this.switchView(SidebarView.FILTER);
+      // Dispatch event to load filter highlights
+      eventBus.dispatch("filterviewactivated", { source: this });
     });
 
     // Buttons for view-specific options.
