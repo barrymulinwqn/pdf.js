@@ -94,10 +94,42 @@ See https://github.com/adobe-type-tools/cmap-resources
       }
     </script>
     <script src="viewer.js" type="module"></script>
+    <!-- Tab 管理脚本 -->
+    <script src="viewer-tabs.js" type="module"></script>
     <!--#endif-->
   </head>
 
   <body tabindex="0">
+    <!-- Tab 模式：如果不在 iframe 中，显示 tab 界面 -->
+    <div id="tabModeContainer" style="display: none;">
+      <!-- Tab 导航栏 -->
+      <div id="pdfTabsContainer" style="position: fixed; top: 0; left: 0; right: 0; z-index: 10000; background: var(--toolbar-bg-color, #f9f9fa); border-bottom: 1px solid var(--toolbar-border-color, #b8b8b8); height: 40px; display: flex; align-items: center; padding: 0 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+        <button id="tab1" class="pdf-tab active" data-tab="1" style="padding: 8px 16px; margin-right: 4px; background: transparent; border: none; border-bottom: 2px solid var(--progressBar-color, #0a84ff); cursor: pointer; color: var(--field-color, #060606); font-size: 14px; font-weight: 500; transition: all 0.2s;">
+          PDF 1
+        </button>
+        <button id="tab2" class="pdf-tab" data-tab="2" style="padding: 8px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: var(--field-color, #060606); opacity: 0.7; font-size: 14px; transition: all 0.2s;">
+          PDF 2
+        </button>
+      </div>
+
+      <!-- 第一个 PDF Viewer (使用 iframe) -->
+      <iframe 
+        id="viewerFrame1" 
+        src="viewer.html?file=compressed.tracemonkey-pldi-09.pdf&disableAutoFetch=true" 
+        style="width: 100%; height: calc(100vh - 40px); border: none; margin-top: 40px; display: block;"
+        title="PDF Viewer 1">
+      </iframe>
+      
+      <!-- 第二个 PDF Viewer (使用 iframe) -->
+      <iframe 
+        id="viewerFrame2" 
+        src="viewer.html?file=testxu.pdf&disableAutoFetch=true" 
+        style="width: 100%; height: calc(100vh - 40px); border: none; margin-top: 40px; display: none;"
+        title="PDF Viewer 2">
+      </iframe>
+    </div>
+
+    <!-- 正常模式：如果在 iframe 中或直接访问，显示正常的 viewer -->
     <div id="outerContainer">
       <span id="viewer-alert" class="visuallyHidden" role="alert"></span>
 
