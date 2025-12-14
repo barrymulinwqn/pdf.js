@@ -51,6 +51,11 @@ const BUILD_DIR = "build/";
 const L10N_DIR = "l10n/";
 const TEST_DIR = "test/";
 
+// Encryption configuration
+const ENCRYPTION_KEY = process.env.PDFJS_ENCRYPTION_KEY || "pdf-js-default-encryption-key-change-in-production";
+const ENCRYPTION_ALGORITHM = "aes-256-cbc";
+const ENCRYPTED_DIR = BUILD_DIR + "encrypted/";
+
 const BASELINE_DIR = BUILD_DIR + "baseline/";
 const MOZCENTRAL_BASELINE_DIR = BUILD_DIR + "mozcentral.baseline/";
 const GENERIC_DIR = BUILD_DIR + "generic/";
@@ -178,6 +183,125 @@ function createStringSource(filename, content) {
     this.push(null);
   };
   return source;
+}
+
+// Encryption/Decryption helper functions
+function encryptBuffer(buffer) {
+  const iv = crypto.randomBytes(16);
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+  const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  // Return IV + encrypted data
+  return Buffer.concat([iv, encrypted]);
+}
+
+function decryptBuffer(buffer) {
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+  const iv = buffer.slice(0, 16);
+  const encryptedData = buffer.slice(16);
+  const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
+  return Buffer.concat([decipher.update(encryptedData), decipher.final()]);
+}
+
+function encryptFile(vinylFile) {
+  const encryptedFile = vinylFile.clone();
+  if (!vinylFile.isBuffer()) {
+    return vinylFile;
+  }
+  encryptedFile.contents = encryptBuffer(vinylFile.contents);
+  // Add .encrypted extension
+  encryptedFile.extname = encryptedFile.extname + '.encrypted';
+  return encryptedFile;
+}
+
+function createDecryptScript() {
+  const decryptScriptContent = `#!/usr/bin/env node
+/**
+ * PDF.js Encrypted Files Decryption Script
+ *
+ * This script decrypts the encrypted PDF.js files that were distributed via npm.
+ *
+ * Usage:
+ *   node decrypt.mjs [encryption-key]
+ *
+ * Environment Variables:
+ *   PDFJS_ENCRYPTION_KEY - The encryption key (can also be passed as argument)
+ */
+
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ENCRYPTION_ALGORITHM = 'aes-256-cbc';
+
+// Get encryption key from argument or environment variable
+const ENCRYPTION_KEY = process.argv[2] || process.env.PDFJS_ENCRYPTION_KEY || 'pdf-js-default-encryption-key-change-in-production';
+
+function decryptBuffer(buffer) {
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+  const iv = buffer.slice(0, 16);
+  const encryptedData = buffer.slice(16);
+  const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
+  return Buffer.concat([decipher.update(encryptedData), decipher.final()]);
+}
+
+function decryptFile(filePath) {
+  if (!filePath.endsWith('.encrypted')) {
+    return;
+  }
+
+  try {
+    const encryptedData = fs.readFileSync(filePath);
+    const decryptedData = decryptBuffer(encryptedData);
+    const outputPath = filePath.replace(/\\.encrypted$/, '');
+    fs.writeFileSync(outputPath, decryptedData);
+    fs.unlinkSync(filePath); // Remove encrypted file after decryption
+    console.log(\`Decrypted: \${path.relative(__dirname, outputPath)}\`);
+  } catch (error) {
+    console.error(\`Failed to decrypt \${filePath}: \${error.message}\`);
+  }
+}
+
+function decryptDirectory(dir) {
+  if (!fs.existsSync(dir)) {
+    return;
+  }
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      decryptDirectory(fullPath);
+    } else if (entry.isFile() && entry.name.endsWith('.encrypted')) {
+      decryptFile(fullPath);
+    }
+  }
+}
+
+console.log('PDF.js Encrypted Files Decryption');
+console.log('==================================');
+console.log('');
+console.log('Decrypting files...');
+
+const buildDir = path.join(__dirname, 'build');
+const webDir = path.join(__dirname, 'web');
+const legacyDir = path.join(__dirname, 'legacy');
+
+decryptDirectory(buildDir);
+decryptDirectory(webDir);
+decryptDirectory(legacyDir);
+
+console.log('');
+console.log('Decryption complete!');
+console.log('');
+console.log('Note: Encrypted files have been removed after successful decryption.');
+`;
+
+  return createStringSource('decrypt.mjs', decryptScriptContent);
 }
 
 function createWebpackAlias(defines) {
@@ -1170,6 +1294,55 @@ gulp.task(
   )
 );
 
+// Encrypt files from generic build for secure distribution
+gulp.task(
+  "encrypt-generic",
+  gulp.series("generic", function encryptGenericFiles() {
+    console.log();
+    console.log("### Encrypting generic build files");
+    console.log("Using encryption key from PDFJS_ENCRYPTION_KEY environment variable");
+
+    fs.rmSync(ENCRYPTED_DIR + "generic/", { recursive: true, force: true });
+    fs.mkdirSync(ENCRYPTED_DIR + "generic/", { recursive: true });
+
+    return ordered([
+      gulp
+        .src(GENERIC_DIR + "build/**/*.{mjs,map}", { encoding: false })
+        .pipe(
+          new stream.Transform({
+            objectMode: true,
+            transform(file, enc, callback) {
+              callback(null, encryptFile(file));
+            },
+          })
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "generic/build")),
+      gulp
+        .src(GENERIC_DIR + "web/**/*.{js,mjs,css,html}", { encoding: false })
+        .pipe(
+          new stream.Transform({
+            objectMode: true,
+            transform(file, enc, callback) {
+              callback(null, encryptFile(file));
+            },
+          })
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "generic/web")),
+      // Copy non-encrypted files (images, fonts, pdfs, etc.)
+      gulp
+        .src(
+          [
+            GENERIC_DIR + "**/*",
+            "!" + GENERIC_DIR + "build/**/*.{mjs,map}",
+            "!" + GENERIC_DIR + "web/**/*.{js,mjs,css,html}",
+          ],
+          { base: GENERIC_DIR, encoding: false }
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "generic/")),
+    ]);
+  })
+);
+
 // Builds the generic production viewer that should be compatible with most
 // older HTML5 browsers.
 gulp.task(
@@ -1195,6 +1368,54 @@ gulp.task(
       return buildGeneric(defines, GENERIC_LEGACY_DIR);
     }
   )
+);
+
+// Encrypt files from generic-legacy build for secure distribution
+gulp.task(
+  "encrypt-generic-legacy",
+  gulp.series("generic-legacy", function encryptGenericLegacyFiles() {
+    console.log();
+    console.log("### Encrypting generic-legacy build files");
+
+    fs.rmSync(ENCRYPTED_DIR + "generic-legacy/", { recursive: true, force: true });
+    fs.mkdirSync(ENCRYPTED_DIR + "generic-legacy/", { recursive: true });
+
+    return ordered([
+      gulp
+        .src(GENERIC_LEGACY_DIR + "build/**/*.{mjs,map}", { encoding: false })
+        .pipe(
+          new stream.Transform({
+            objectMode: true,
+            transform(file, enc, callback) {
+              callback(null, encryptFile(file));
+            },
+          })
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "generic-legacy/build")),
+      gulp
+        .src(GENERIC_LEGACY_DIR + "web/**/*.{js,mjs,css,html}", { encoding: false })
+        .pipe(
+          new stream.Transform({
+            objectMode: true,
+            transform(file, enc, callback) {
+              callback(null, encryptFile(file));
+            },
+          })
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "generic-legacy/web")),
+      // Copy non-encrypted files (images, fonts, pdfs, etc.)
+      gulp
+        .src(
+          [
+            GENERIC_LEGACY_DIR + "**/*",
+            "!" + GENERIC_LEGACY_DIR + "build/**/*.{mjs,map}",
+            "!" + GENERIC_LEGACY_DIR + "web/**/*.{js,mjs,css,html}",
+          ],
+          { base: GENERIC_LEGACY_DIR, encoding: false }
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "generic-legacy/")),
+    ]);
+  })
 );
 
 function buildComponents(defines, dir) {
@@ -1359,6 +1580,43 @@ gulp.task(
       return buildMinified(defines, MINIFIED_LEGACY_DIR);
     }
   )
+);
+
+// Encrypt minified files for obfuscated + encrypted distribution
+gulp.task(
+  "encrypt-minified",
+  gulp.series("minified", function encryptMinifiedFiles() {
+    console.log();
+    console.log("### Encrypting minified (obfuscated) build files");
+
+    fs.rmSync(ENCRYPTED_DIR + "minified/", { recursive: true, force: true });
+    fs.mkdirSync(ENCRYPTED_DIR + "minified/", { recursive: true });
+
+    return ordered([
+      gulp
+        .src(MINIFIED_DIR + "build/**/*.{mjs,map}", { encoding: false })
+        .pipe(
+          new stream.Transform({
+            objectMode: true,
+            transform(file, enc, callback) {
+              callback(null, encryptFile(file));
+            },
+          })
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "minified/build")),
+      gulp
+        .src(MINIFIED_DIR + "image_decoders/**/*.mjs", { encoding: false })
+        .pipe(
+          new stream.Transform({
+            objectMode: true,
+            transform(file, enc, callback) {
+              callback(null, encryptFile(file));
+            },
+          })
+        )
+        .pipe(gulp.dest(ENCRYPTED_DIR + "minified/image_decoders")),
+    ]);
+  })
 );
 
 function createDefaultPrefsFile() {
@@ -2322,12 +2580,13 @@ gulp.task(
 function packageJson() {
   const VERSION = getVersionJSON().version;
 
-  const DIST_NAME = "pdfjs-dist";
-  const DIST_DESCRIPTION = "Generic build of Mozilla's PDF.js library.";
+  // Allow overriding package name via environment variable
+  const DIST_NAME = process.env.PDFJS_DIST_NAME || "pdfjs-viewer-highlight-echo";
+  const DIST_DESCRIPTION = process.env.PDFJS_DIST_DESCRIPTION || "Dafu custom PDF.js distribution";
   const DIST_KEYWORDS = ["Mozilla", "pdf", "pdf.js"];
   const DIST_HOMEPAGE = "https://mozilla.github.io/pdf.js/";
-  const DIST_BUGS_URL = "https://github.com/mozilla/pdf.js/issues";
-  const DIST_GIT_URL = "https://github.com/mozilla/pdf.js.git";
+  const DIST_BUGS_URL = "https://github.com/mozilla/custompdf.js/issues";
+  const DIST_GIT_URL = "https://github.com/mozilla/custompdf.js.git";
   const DIST_LICENSE = "Apache-2.0";
 
   const npmManifest = {
@@ -2485,6 +2744,145 @@ gulp.task(
         gulp
           .src(TYPES_DIR + "**/*", { base: TYPES_DIR, encoding: false })
           .pipe(gulp.dest(DIST_DIR + "types/")),
+      ]);
+    }
+  )
+);
+
+// Create encrypted distribution for npm with encrypted source files
+gulp.task(
+  "dist-encrypted",
+  gulp.series(
+    "encrypt-generic",
+    "encrypt-generic-legacy",
+    "components",
+    "components-legacy",
+    "image_decoders",
+    "image_decoders-legacy",
+    "minified",
+    "minified-legacy",
+    "types",
+    function createEncryptedDist() {
+      console.log();
+      console.log("### Creating encrypted distribution for npm");
+
+      const ENCRYPTED_DIST_DIR = BUILD_DIR + "dist-encrypted/";
+      fs.rmSync(ENCRYPTED_DIST_DIR, { recursive: true, force: true });
+      fs.mkdirSync(ENCRYPTED_DIST_DIR, { recursive: true });
+
+      return ordered([
+        packageJson().pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        // Add decryption script
+        createDecryptScript().pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src("external/dist/**/*", {
+            base: "external/dist",
+            encoding: false,
+            removeBOM: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src(ENCRYPTED_DIR + "generic/LICENSE", { encoding: false })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        // Copy encrypted build files
+        gulp
+          .src(ENCRYPTED_DIR + "generic/build/**/*", {
+            base: ENCRYPTED_DIR + "generic",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src(ENCRYPTED_DIR + "generic-legacy/build/**/*", {
+            base: ENCRYPTED_DIR + "generic-legacy",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "legacy/")),
+        gulp
+          .src(ENCRYPTED_DIR + "generic/web/**/*", {
+            base: ENCRYPTED_DIR + "generic/web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "web/")),
+        gulp
+          .src(ENCRYPTED_DIR + "generic-legacy/web/**/*", {
+            base: ENCRYPTED_DIR + "generic-legacy/web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "legacy/web/")),
+        // Copy non-encrypted static assets
+        gulp
+          .src(GENERIC_DIR + "web/cmaps/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/iccs/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/standard_fonts/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/wasm/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR)),
+        gulp
+          .src(MINIFIED_DIR + "build/{pdf,pdf.worker,pdf.sandbox}.min.mjs", {
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "build/")),
+        gulp
+          .src(MINIFIED_DIR + "image_decoders/pdf.image_decoders.min.mjs", {
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "image_decoders/")),
+        gulp
+          .src(
+            MINIFIED_LEGACY_DIR + "build/{pdf,pdf.worker,pdf.sandbox}.min.mjs",
+            { encoding: false }
+          )
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "legacy/build/")),
+        gulp
+          .src(
+            MINIFIED_LEGACY_DIR + "image_decoders/pdf.image_decoders.min.mjs",
+            { encoding: false }
+          )
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "legacy/image_decoders/")),
+        gulp
+          .src(COMPONENTS_DIR + "**/*", {
+            base: COMPONENTS_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "web/")),
+        gulp
+          .src(COMPONENTS_LEGACY_DIR + "**/*", {
+            base: COMPONENTS_LEGACY_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "legacy/web/")),
+        gulp
+          .src(IMAGE_DECODERS_DIR + "**/*", {
+            base: IMAGE_DECODERS_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "image_decoders/")),
+        gulp
+          .src(IMAGE_DECODERS_LEGACY_DIR + "**/*", {
+            base: IMAGE_DECODERS_LEGACY_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "legacy/image_decoders/")),
+        gulp
+          .src(TYPES_DIR + "**/*", { base: TYPES_DIR, encoding: false })
+          .pipe(gulp.dest(ENCRYPTED_DIST_DIR + "types/")),
       ]);
     }
   )
