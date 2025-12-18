@@ -210,12 +210,12 @@ const PDFViewerApplication = {
     } catch (ex) {
       console.error("initialize:", ex);
     }
-    
+
     // Parse query string parameters (like disableAutoFetch)
     if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
       this._parseQueryParams();
     }
-    
+
     if (AppOptions.get("pdfBugEnabled")) {
       await this._parseHashParams();
     }
@@ -2594,24 +2594,24 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     if (!file) {
       return;
     }
-    const viewerOrigin = URL.parse(window.location)?.origin || "null";
-    if (HOSTED_VIEWER_ORIGINS.has(viewerOrigin)) {
-      // Hosted or local viewer, allow for any file locations
-      return;
-    }
-    const fileOrigin = URL.parse(file, window.location)?.origin;
-    if (fileOrigin === viewerOrigin) {
-      return;
-    }
-    const ex = new Error("file origin does not match viewer's");
+    // const viewerOrigin = URL.parse(window.location)?.origin || "null";
+    // if (HOSTED_VIEWER_ORIGINS.has(viewerOrigin)) {
+    //   // Hosted or local viewer, allow for any file locations
+    //   return;
+    // }
+    // const fileOrigin = URL.parse(file, window.location)?.origin;
+    // if (fileOrigin === viewerOrigin) {
+    //   return;
+    // }
+    // const ex = new Error("file origin does not match viewer's");
 
-    PDFViewerApplication._documentError("pdfjs-loading-error", {
-      message: ex.message,
-    });
-    // Removing of the following line will not guarantee that the viewer will
-    // start accepting URLs from foreign origin -- CORS headers on the remote
-    // server must be properly configured.
-    throw ex;
+    // PDFViewerApplication._documentError("pdfjs-loading-error", {
+    //   message: ex.message,
+    // });
+    // // Removing of the following line will not guarantee that the viewer will
+    // // start accepting URLs from foreign origin -- CORS headers on the remote
+    // // server must be properly configured.
+    // throw ex;
   };
 
   // eslint-disable-next-line no-var

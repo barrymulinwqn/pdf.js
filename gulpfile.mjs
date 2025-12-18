@@ -2888,6 +2888,143 @@ gulp.task(
   )
 );
 
+// Create plain (unencrypted) distribution for npm - mirrors dist-encrypted structure
+gulp.task(
+  "dist-plain",
+  gulp.series(
+    "generic",
+    "generic-legacy",
+    "components",
+    "components-legacy",
+    "image_decoders",
+    "image_decoders-legacy",
+    "minified",
+    "minified-legacy",
+    "types",
+    function createPlainDist() {
+      console.log();
+      console.log("### Creating plain (unencrypted) distribution for npm");
+
+      const PLAIN_DIST_DIR = BUILD_DIR + "dist-plain/";
+      fs.rmSync(PLAIN_DIST_DIR, { recursive: true, force: true });
+      fs.mkdirSync(PLAIN_DIST_DIR, { recursive: true });
+
+      return ordered([
+        packageJson().pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src("external/dist/**/*", {
+            base: "external/dist",
+            encoding: false,
+            removeBOM: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "LICENSE", { encoding: false })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        // Copy unencrypted build files
+        gulp
+          .src(GENERIC_DIR + "build/**/*", {
+            base: GENERIC_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(GENERIC_LEGACY_DIR + "build/**/*", {
+            base: GENERIC_LEGACY_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "legacy/")),
+        gulp
+          .src(GENERIC_DIR + "web/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "web/")),
+        gulp
+          .src(GENERIC_LEGACY_DIR + "web/**/*", {
+            base: GENERIC_LEGACY_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "legacy/web/")),
+        // Copy static assets
+        gulp
+          .src(GENERIC_DIR + "web/cmaps/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/iccs/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/standard_fonts/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/wasm/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(MINIFIED_DIR + "build/{pdf,pdf.worker,pdf.sandbox}.min.mjs", {
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "build/")),
+        gulp
+          .src(MINIFIED_DIR + "image_decoders/pdf.image_decoders.min.mjs", {
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "image_decoders/")),
+        gulp
+          .src(
+            MINIFIED_LEGACY_DIR + "build/{pdf,pdf.worker,pdf.sandbox}.min.mjs",
+            { encoding: false }
+          )
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "legacy/build/")),
+        gulp
+          .src(
+            MINIFIED_LEGACY_DIR + "image_decoders/pdf.image_decoders.min.mjs",
+            { encoding: false }
+          )
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "legacy/image_decoders/")),
+        gulp
+          .src(COMPONENTS_DIR + "**/*", {
+            base: COMPONENTS_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "web/")),
+        gulp
+          .src(COMPONENTS_LEGACY_DIR + "**/*", {
+            base: COMPONENTS_LEGACY_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "legacy/web/")),
+        gulp
+          .src(IMAGE_DECODERS_DIR + "**/*", {
+            base: IMAGE_DECODERS_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "image_decoders/")),
+        gulp
+          .src(IMAGE_DECODERS_LEGACY_DIR + "**/*", {
+            base: IMAGE_DECODERS_LEGACY_DIR,
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "legacy/image_decoders/")),
+        gulp
+          .src(TYPES_DIR + "**/*", { base: TYPES_DIR, encoding: false })
+          .pipe(gulp.dest(PLAIN_DIST_DIR + "types/")),
+      ]);
+    }
+  )
+);
+
 gulp.task(
   "dist-install",
   gulp.series("dist", function createDistInstall(done) {
