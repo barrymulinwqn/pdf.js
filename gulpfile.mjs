@@ -1243,6 +1243,9 @@ function buildGeneric(defines, dir) {
         encoding: false,
       })
       .pipe(gulp.dest(dir + "web")),
+    gulp
+      .src("web/config/**/*", { base: "web/", encoding: false })
+      .pipe(gulp.dest(dir + "web")),
     createCMapBundle().pipe(gulp.dest(dir + "web/cmaps")),
     createICCBundle().pipe(gulp.dest(dir + "web/iccs")),
     createStandardFontBundle().pipe(gulp.dest(dir + "web/standard_fonts")),
@@ -2949,6 +2952,12 @@ gulp.task(
         // Copy static assets
         gulp
           .src(GENERIC_DIR + "web/cmaps/**/*", {
+            base: GENERIC_DIR + "web",
+            encoding: false,
+          })
+          .pipe(gulp.dest(PLAIN_DIST_DIR)),
+        gulp
+          .src(GENERIC_DIR + "web/config/**/*", {
             base: GENERIC_DIR + "web",
             encoding: false,
           })
