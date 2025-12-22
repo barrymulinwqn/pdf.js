@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF.js Selection with Backend Integration</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f0f2f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .viewer-panel {
+      flex: 2;
+      background: white;
+      margin: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-panel {
+      flex: 1;
+      max-width: 450px;
+      background: white;
+      margin: 20px 20px 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fafafa;
+    }
+
+    .panel-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    iframe {
+      flex: 1;
+      border: none;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .alert-success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .alert-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #ef4444;
+    }
+
+    .selection-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+
+    .selection-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    }
+
+    .selection-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .selection-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .selection-meta {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #6b7280;
+    }
+
+    .meta-label {
+      font-weight: 500;
+    }
+
+    .selection-text {
+      background: #f9fafb;
+      padding: 12px;
+      border-radius: 6px;
+      border-left: 3px solid #667eea;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #374151;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .selection-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state-text {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-subtext {
+      font-size: 14px;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .status-online {
+      background: #10b981;
+    }
+
+    .status-offline {
+      background: #ef4444;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f4f6;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📄 PDF.js Selection Manager</h1>
+    <p>Select text in PDF viewer and save to backend • Powered by PDF.js</p>
+  </div>
+
+  <div class="main-container">
+    <div class="viewer-panel">
+      <div class="panel-header">
+        <h2>PDF Viewer</h2>
+      </div>
+      <iframe id="pdfViewer" src="../web/viewer.html"></iframe>
+    </div>
+
+    <div class="sidebar-panel">
+      <div class="panel-header">
+        <h2>Selections</h2>
+        <span class="badge" id="selectionCount">0</span>
+      </div>
+
+      <div class="sidebar-content">
+        <div id="backendStatus" class="alert alert-info">
+          <span class="loading"></span>
+          <span>Checking backend connection...</span>
+        </div>
+
+        <div class="stats-grid" id="statsGrid" style="display: none;">
+          <div class="stat-card">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label">Total Saved</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statLocal">0</div>
+            <div class="stat-label">This Session</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary" onclick="loadSelections()">
+            🔄 Refresh
+          </button>
+          <button class="btn btn-secondary" onclick="exportSelections()">
+            📥 Export
+          </button>
+          <button class="btn btn-danger" onclick="clearAllSelections()">
+            🗑️ Clear All
+          </button>
+        </div>
+
+        <div id="selectionsList">
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-text">No selections yet</div>
+            <div class="empty-state-subtext">Select text in the PDF and click "Save Selection"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_BASE = 'http://localhost:3000/api';
+    let backendAvailable = false;
+    let localSelections = [];
+    let totalBackendSelections = 0;
+
+    // Check backend health
+    async function checkBackend() {
+      try {
+        const response = await fetch(`${API_BASE.replace('/api', '')}/health`);
+        if (response.ok) {
+          backendAvailable = true;
+          updateBackendStatus(true);
+          loadSelections();
+        } else {
+          throw new Error('Backend not healthy');
+        }
+      } catch (error) {
+        backendAvailable = false;
+        updateBackendStatus(false);
+      }
+    }
+
+    // Update backend status indicator
+    function updateBackendStatus(available) {
+      const statusEl = document.getElementById('backendStatus');
+      if (available) {
+        statusEl.className = 'alert alert-success';
+        statusEl.innerHTML = `
+          <span class="status-indicator status-online"></span>
+          <span>Connected to backend server</span>
+        `;
+        document.getElementById('statsGrid').style.display = 'grid';
+      } else {
+        statusEl.className = 'alert alert-error';
+        statusEl.innerHTML = `
+          <span class="status-indicator status-offline"></span>
+          <span>Backend offline - selections will be stored locally only</span>
+        `;
+      }
+    }
+
+    // Listen for postMessage from embedded PDF viewer
+    window.addEventListener('message', async (event) => {
+      if (event.data && event.data.type === 'pdfjs-selection' && event.data.source === 'pdf.js') {
+        console.log('Received selection from PDF.js:', event.data.data);
+        await handleSelection(event.data.data);
+      }
+    }, false);
+
+    // Handle incoming selection
+    async function handleSelection(data) {
+      localSelections.push({
+        ...data,
+        capturedAt: new Date().toISOString(),
+        savedToBackend: false
+      });
+
+      // Try to save to backend
+      if (backendAvailable) {
+        try {
+          const response = await fetch(`${API_BASE}/selections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            localSelections[localSelections.length - 1].savedToBackend = true;
+            localSelections[localSelections.length - 1].backendId = result.id;
+            console.log('✓ Selection saved to backend:', result);
+            showNotification('Selection saved successfully!', 'success');
+          }
+        } catch (error) {
+          console.error('Failed to save to backend:', error);
+          showNotification('Saved locally only (backend offline)', 'warning');
+        }
+      }
+
+      updateUI();
+    }
+
+    // Load selections from backend
+    async function loadSelections() {
+      if (!backendAvailable) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/selections`);
+        if (response.ok) {
+          const result = await response.json();
+          totalBackendSelections = result.count;
+
+          // Merge with local selections
+          const backendIds = new Set(localSelections.map(s => s.backendId).filter(Boolean));
+          result.selections.forEach(s => {
+            if (!backendIds.has(s.id)) {
+              localSelections.push({
+                ...s,
+                capturedAt: s.createdAt,
+                savedToBackend: true,
+                backendId: s.id
+              });
+            }
+          });
+
+          updateUI();
+        }
+      } catch (error) {
+        console.error('Failed to load selections:', error);
+      }
+    }
+
+    // Delete selection
+    async function deleteSelection(index, backendId) {
+      if (confirm('Delete this selection?')) {
+        // Delete from backend if saved there
+        if (backendId && backendAvailable) {
+          try {
+            await fetch(`${API_BASE}/selections/${backendId}`, {
+              method: 'DELETE'
+            });
+          } catch (error) {
+            console.error('Failed to delete from backend:', error);
+          }
+        }
+
+        localSelections.splice(index, 1);
+        updateUI();
+        showNotification('Selection deleted', 'success');
+      }
+    }
+
+    // Clear all selections
+    async function clearAllSelections() {
+      if (localSelections.length === 0) return;
+
+      if (confirm(`Clear all ${localSelections.length} selection(s)?`)) {
+        localSelections = [];
+        updateUI();
+        showNotification('All selections cleared', 'success');
+      }
+    }
+
+    // Export selections
+    async function exportSelections() {
+      if (backendAvailable) {
+        try {
+          const response = await fetch(`${API_BASE}/selections/export`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `selections-export-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('Selections exported!', 'success');
+          }
+        } catch (error) {
+          console.error('Export failed:', error);
+          exportLocal();
+        }
+      } else {
+        exportLocal();
+      }
+    }
+
+    // Export local selections
+    function exportLocal() {
+      const json = JSON.stringify(localSelections, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `selections-local-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotification('Local selections exported!', 'success');
+    }
+
+    // Update UI
+    function updateUI() {
+      // Update count badge
+      document.getElementById('selectionCount').textContent = localSelections.length;
+
+      // Update stats
+      document.getElementById('statTotal').textContent = totalBackendSelections;
+      document.getElementById('statLocal').textContent = localSelections.length;
+
+      // Update list
+      const listEl = document.getElementById('selectionsList');
+
+      if (localSelections.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-text">No selections yet</div>
+            <div class="empty-state-subtext">Select text in the PDF and click "Save Selection"</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = localSelections.map((sel, index) => `
+        <div class="selection-card">
+          <div class="selection-header">
+            <span class="selection-title">Selection #${localSelections.length - index}</span>
+            ${sel.savedToBackend ? '✅' : '💾'}
+          </div>
+          <div class="selection-meta">
+            <div class="meta-item">
+              <span class="meta-label">Page:</span> ${sel.page}
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Length:</span> ${sel.text.length} chars
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Captured:</span> ${new Date(sel.capturedAt).toLocaleTimeString()}
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Status:</span> ${sel.savedToBackend ? 'Saved' : 'Local'}
+            </div>
+          </div>
+          <div class="selection-text">${escapeHtml(sel.text)}</div>
+          <div class="selection-actions">
+            <button class="btn btn-danger btn-small" onclick="deleteSelection(${index}, ${sel.backendId || null})">
+              Delete
+            </button>
+          </div>
+        </div>
+      `).reverse().join('');
+    }
+
+    // Show notification
+    function showNotification(message, type) {
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    // Utility: escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize
+    window.addEventListener('load', () => {
+      checkBackend();
+      console.log('PDF Selection Manager initialized');
+    });
+  </script>
+</body>
+</html>

@@ -1382,30 +1382,24 @@ const PDFViewerApplication = {
         return;
       }
 
-      const selectionData = [];
       const range = selection.getRangeAt(0);
 
-      // Find all text layer spans within the selection
-      const container = range.commonAncestorContainer;
-      const textLayerDivs = container.nodeType === Node.ELEMENT_NODE
-        ? container.querySelectorAll?.('.textLayer') || []
-        : container.parentElement?.closest('.page')?.querySelectorAll('.textLayer') || [];
-
-      // If no text layer found, try to find from the selection itself
-      let pageElement = null;
-      if (range.startContainer.nodeType === Node.TEXT_NODE) {
-        pageElement = range.startContainer.parentElement?.closest('.page');
-      } else {
-        pageElement = range.startContainer.closest?.('.page');
-      }
+      // Find page element from the selection
+      const pageElement =
+        range.startContainer.nodeType === Node.TEXT_NODE
+          ? range.startContainer.parentElement?.closest(".page")
+          : range.startContainer.closest?.(".page");
 
       if (!pageElement) {
         console.warn("Could not find page element");
         return;
       }
 
-      const pageNumber = parseInt(pageElement.getAttribute('data-page-number'), 10);
-      const textLayer = pageElement.querySelector('.textLayer');
+      const pageNumber = parseInt(
+        pageElement.getAttribute("data-page-number"),
+        10
+      );
+      const textLayer = pageElement.querySelector(".textLayer");
 
       if (!textLayer) {
         console.warn("Could not find text layer");
@@ -1446,28 +1440,69 @@ const PDFViewerApplication = {
         Math.round(pdfCoords[0]),
         Math.round(pdfCoords[1]),
         Math.round(pdfCoordsEnd[0] - pdfCoords[0]),
-        Math.round(pdfCoordsEnd[1] - pdfCoords[1])
+        Math.round(pdfCoordsEnd[1] - pdfCoords[1]),
       ];
 
       const data = {
         page: pageNumber,
         text: selectedText,
-        location: location
+        location,
+        timestamp: Date.now(),
+        documentUrl: this.url || window.location.href,
       };
 
-      // Download as JSON file
+      // Transfer data to parent window if embedded
+      if (this.isViewerEmbedded && window.parent !== window) {
+        try {
+          // Send data to parent window via postMessage
+          window.parent.postMessage(
+            {
+              type: "pdfjs-selection",
+              source: "pdf.js",
+              data,
+            },
+            "*" // In production, replace '*' with specific origin for security
+          );
+          console.log("Selection data sent to parent window:", data);
+        } catch (postError) {
+          console.error("Error posting message to parent:", postError);
+        }
+      }
+
+      // Dispatch custom event that parent can listen to
+      try {
+        const customEvent = new CustomEvent("pdfselectioncaptured", {
+          bubbles: true,
+          cancelable: false,
+          detail: data,
+        });
+
+        // Try to dispatch at parent document if possible
+        if (this.isViewerEmbedded) {
+          try {
+            parent.document.dispatchEvent(customEvent);
+          } catch {
+            // Cross-origin restriction, dispatch locally
+            document.dispatchEvent(customEvent);
+          }
+        } else {
+          document.dispatchEvent(customEvent);
+        }
+      } catch (eventError) {
+        console.error("Error dispatching custom event:", eventError);
+      }
+
+      // Download as JSON file (fallback or additional option)
       const jsonString = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
+      const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `selection-page${pageNumber}-${Date.now()}.json`;
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      console.log("Selection saved:", data);
+      console.log("Selection saved and transferred:", data);
     } catch (error) {
       console.error("Error saving selection as JSON:", error);
     }
