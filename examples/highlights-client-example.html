@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF.js Highlights Client Example</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .main-content {
+      display: flex;
+      height: calc(100vh - 180px);
+    }
+
+    .sidebar {
+      width: 350px;
+      background: #f8f9fa;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 2px solid #e0e0e0;
+    }
+
+    .viewer-container {
+      flex: 1;
+      background: #ffffff;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-group h3 {
+      font-size: 14px;
+      color: #667eea;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    .highlight-list {
+      margin-top: 20px;
+    }
+
+    .highlight-item {
+      background: white;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border-left: 4px solid #667eea;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .highlight-item.active {
+      border-left-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .highlight-page {
+      font-size: 12px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .highlight-text {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.4;
+      margin-bottom: 4px;
+    }
+
+    .highlight-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-right: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .status-bar {
+      padding: 12px 20px;
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      font-size: 13px;
+      color: #6b7280;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .info-box {
+      background: #dbeafe;
+      border: 1px solid #3b82f6;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      color: #1e40af;
+    }
+
+    .add-highlight-form {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .color-picker-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .color-option {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .color-option:hover {
+      transform: scale(1.1);
+    }
+
+    .color-option.selected {
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📝 PDF Highlights Manager</h1>
+      <p>Send custom highlights to PDF.js viewer in real-time</p>
+    </div>
+
+    <div class="main-content">
+      <div class="sidebar">
+        <div class="info-box">
+          💡 Click buttons to send different highlight sets to the PDF viewer
+        </div>
+
+        <div class="controls">
+          <div class="control-group">
+            <h3>Preset Highlights</h3>
+            <button class="btn btn-primary" onclick="loadSet1()">
+              📋 Load Set 1 (Yellow)
+            </button>
+            <button class="btn btn-success" onclick="loadSet2()">
+              📋 Load Set 2 (Green)
+            </button>
+            <button class="btn btn-warning" onclick="loadSet3()">
+              📋 Load Set 3 (Mixed)
+            </button>
+          </div>
+
+          <div class="control-group">
+            <h3>Actions</h3>
+            <button class="btn btn-secondary" onclick="loadFromServer()">
+              🌐 Load from Server
+            </button>
+            <button class="btn btn-danger" onclick="clearHighlights()">
+              🗑️ Clear All
+            </button>
+          </div>
+        </div>
+
+        <div class="add-highlight-form">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #667eea;">Add Custom Highlight</h3>
+
+          <div class="form-group">
+            <label>Page Number</label>
+            <input type="number" id="customPage" value="1" min="1">
+          </div>
+
+          <div class="form-group">
+            <label>Highlight Text</label>
+            <textarea id="customText" placeholder="Enter text to highlight..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-picker-group">
+              <div class="color-option selected" style="background: #FFFF00;" data-color="#FFFF00" onclick="selectColor(this)"></div>
+              <div class="color-option" style="background: #00FF00;" data-color="#00FF00" onclick="selectColor(this)"></div>
+              <div class="color-option" style="background: #FF6B6B;" data-color="#FF6B6B" onclick="selectColor(this)"></div>
+              <div class="color-option" style="background: #4ECDC4;" data-color="#4ECDC4" onclick="selectColor(this)"></div>
+              <div class="color-option" style="background: #95E1D3;" data-color="#95E1D3" onclick="selectColor(this)"></div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="addCustomHighlight()">
+            ➕ Add Highlight
+          </button>
+        </div>
+
+        <div class="highlight-list">
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: #667eea;">Current Highlights</h3>
+          <div id="highlightsList">
+            <p style="text-align: center; color: #9ca3af; font-size: 13px; padding: 20px;">No highlights loaded</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewer-container">
+        <iframe id="pdfViewer" src="../web/viewer.html"></iframe>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span>Connected to PDF Viewer</span>
+      </div>
+      <span id="highlightCount">0 highlights loaded</span>
+    </div>
+  </div>
+
+  <script>
+    let currentHighlights = [];
+    let selectedColor = '#FFFF00';
+
+    const iframe = document.getElementById('pdfViewer');
+
+    // Predefined highlight sets
+    const highlightSet1 = [
+      {
+        page: 1,
+        text: "This is the first important highlight on page 1",
+        location: [50, 100, 400, 60],
+        color: "#FFFF00",
+        note: "Key introduction section"
+      },
+      {
+        page: 1,
+        text: "Another important point on the same page",
+        location: [50, 200, 350, 50],
+        color: "#FFFF00",
+        note: "Critical definition"
+      }
+    ];
+
+    const highlightSet2 = [
+      {
+        page: 2,
+        text: "Important information on page 2",
+        location: [50, 150, 450, 80],
+        color: "#00FF00",
+        note: "Main concept"
+      },
+      {
+        page: 3,
+        text: "Key finding on page 3",
+        location: [50, 100, 400, 100],
+        color: "#00FF00",
+        note: "Research results"
+      }
+    ];
+
+    const highlightSet3 = [
+      {
+        page: 1,
+        text: "Mixed colors example - Yellow",
+        location: [50, 300, 300, 40],
+        color: "#FFFF00"
+      },
+      {
+        page: 1,
+        text: "Mixed colors example - Green",
+        location: [50, 360, 320, 40],
+        color: "#00FF00"
+      },
+      {
+        page: 2,
+        text: "Mixed colors example - Red",
+        location: [50, 250, 380, 60],
+        color: "#FF6B6B"
+      }
+    ];
+
+    // Send highlights to PDF viewer
+    function sendHighlights(highlights) {
+      currentHighlights = highlights;
+
+      iframe.contentWindow.postMessage({
+        type: 'pdfjs-highlights',
+        source: 'pdf.js-client',
+        data: highlights
+      }, '*');
+
+      updateUI();
+      console.log('Sent highlights to PDF viewer:', highlights);
+    }
+
+    // Load preset highlight sets
+    function loadSet1() {
+      sendHighlights(highlightSet1);
+    }
+
+    function loadSet2() {
+      sendHighlights(highlightSet2);
+    }
+
+    function loadSet3() {
+      sendHighlights(highlightSet3);
+    }
+
+    function clearHighlights() {
+      sendHighlights([]);
+    }
+
+    // Load from server (simulated)
+    async function loadFromServer() {
+      // Simulate server request
+      console.log('Loading highlights from server...');
+
+      setTimeout(() => {
+        const serverHighlights = [
+          {
+            page: 1,
+            text: "Server-loaded highlight",
+            location: [50, 450, 400, 50],
+            color: "#4ECDC4",
+            note: "From backend API",
+            author: "System",
+            timestamp: Date.now()
+          }
+        ];
+        sendHighlights(serverHighlights);
+      }, 500);
+    }
+
+    // Add custom highlight
+    function addCustomHighlight() {
+      const page = parseInt(document.getElementById('customPage').value);
+      const text = document.getElementById('customText').value.trim();
+
+      if (!text) {
+        alert('Please enter highlight text');
+        return;
+      }
+
+      const newHighlight = {
+        page: page,
+        text: text,
+        location: [50, 100 + (currentHighlights.length * 70), 400, 50],
+        color: selectedColor,
+        timestamp: Date.now()
+      };
+
+      const updatedHighlights = [...currentHighlights, newHighlight];
+      sendHighlights(updatedHighlights);
+
+      // Clear form
+      document.getElementById('customText').value = '';
+    }
+
+    // Color selection
+    function selectColor(element) {
+      document.querySelectorAll('.color-option').forEach(el => {
+        el.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      selectedColor = element.dataset.color;
+    }
+
+    // Update UI
+    function updateUI() {
+      const count = currentHighlights.length;
+      document.getElementById('highlightCount').textContent =
+        `${count} highlight${count !== 1 ? 's' : ''} loaded`;
+
+      const listEl = document.getElementById('highlightsList');
+
+      if (count === 0) {
+        listEl.innerHTML = '<p style="text-align: center; color: #9ca3af; font-size: 13px; padding: 20px;">No highlights loaded</p>';
+        return;
+      }
+
+      listEl.innerHTML = currentHighlights.map((h, index) => `
+        <div class="highlight-item">
+          <div class="highlight-page">📄 Page ${h.page}</div>
+          <div class="highlight-text">${escapeHtml(h.text.substring(0, 80))}${h.text.length > 80 ? '...' : ''}</div>
+          <div style="display: flex; align-items: center; margin-top: 8px;">
+            <span class="highlight-color" style="background: ${h.color}"></span>
+            ${h.note ? `<span style="font-size: 11px; color: #6b7280;">📝 ${escapeHtml(h.note)}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Listen for requests from PDF viewer
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'pdfjs-request-highlights') {
+        console.log('PDF viewer requesting highlights');
+        if (currentHighlights.length > 0) {
+          sendHighlights(currentHighlights);
+        }
+      }
+    });
+
+    // Auto-send highlights when iframe loads
+    iframe.addEventListener('load', () => {
+      console.log('PDF viewer loaded');
+      setTimeout(() => {
+        if (currentHighlights.length > 0) {
+          sendHighlights(currentHighlights);
+        }
+      }, 1500);
+    });
+
+    // Initialize
+    console.log('Highlights Client initialized');
+  </script>
+</body>
+</html>

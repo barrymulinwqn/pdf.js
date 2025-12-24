@@ -36,6 +36,8 @@ class PDFFilterViewer {
 
   #filterItems = [];
 
+  #isViewerEmbedded = false;
+
   /**
    * @param {PDFFilterViewerOptions} options
    */
@@ -43,14 +45,81 @@ class PDFFilterViewer {
     this.#container = container;
     this.#eventBus = eventBus;
     this.#linkService = linkService;
+    this.#isViewerEmbedded = window.parent !== window;
+
+    // Listen for highlights data from parent window
+    this.#setupMessageListeners();
   }
 
   /**
-   * Load and display highlights from the highlights.json file
+   * Setup message listeners for receiving highlights from parent window
    */
-  async loadHighlights() {
+  #setupMessageListeners() {
+    // Listen for postMessage from parent window
+    window.addEventListener(
+      "message",
+      event => {
+        if (
+          event.data &&
+          event.data.type === "pdfjs-highlights" &&
+          event.data.source === "pdf.js-client"
+        ) {
+          console.log("Received highlights from parent window:", event.data.data);
+          this.setHighlights(event.data.data);
+        }
+      },
+      false
+    );
+
+    // Listen for custom event (same-origin)
+    document.addEventListener(
+      "pdfhighlightsdatareceived",
+      event => {
+        console.log("Received highlights via custom event:", event.detail);
+        this.setHighlights(event.detail);
+      },
+      false
+    );
+  }
+
+  /**
+   * Set highlights data directly
+   * @param {Array} highlightsData - Array of highlight objects
+   */
+  setHighlights(highlightsData) {
+    if (!Array.isArray(highlightsData)) {
+      console.error("Invalid highlights data: must be an array");
+      return;
+    }
+
+    this.#highlightsData = highlightsData;
+    this.#render();
+  }
+
+  /**
+   * Load and display highlights - supports multiple sources
+   * @param {Array} externalData - Optional highlights data passed directly
+   */
+  async loadHighlights(externalData = null) {
     try {
-      // Fetch the highlights.json file
+      // Priority 1: Use externally provided data
+      if (externalData && Array.isArray(externalData)) {
+        this.#highlightsData = externalData;
+        this.#render();
+        return;
+      }
+
+      // Priority 2: Request data from parent window if embedded
+      if (this.#isViewerEmbedded) {
+        this.#requestHighlightsFromParent();
+        // Wait a bit for response, then try fallback
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (this.#highlightsData) {
+          return;
+        }
+      }
+
+      // Priority 3: Fallback to loading from highlights.json file
       const response = await fetch("config/highlights.json");
       if (!response.ok) {
         throw new Error(`Failed to load highlights: ${response.statusText}`);
@@ -61,6 +130,29 @@ class PDFFilterViewer {
     } catch (error) {
       console.error("Error loading highlights:", error);
       this.#renderError(error.message);
+    }
+  }
+
+  /**
+   * Request highlights data from parent window
+   */
+  #requestHighlightsFromParent() {
+    if (!this.#isViewerEmbedded) {
+      return;
+    }
+
+    try {
+      // Send request to parent for highlights
+      window.parent.postMessage(
+        {
+          type: "pdfjs-request-highlights",
+          source: "pdf.js",
+        },
+        "*" // In production, replace with specific origin
+      );
+      console.log("Requested highlights from parent window");
+    } catch (error) {
+      console.error("Error requesting highlights from parent:", error);
     }
   }
 

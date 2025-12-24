@@ -2270,14 +2270,16 @@ const PDFViewerApplication = {
     eventBus._on("scalechanging", onScaleChanging.bind(this), opts);
     eventBus._on("rotationchanging", onRotationChanging.bind(this), opts);
     eventBus._on("sidebarviewchanged", onSidebarViewChanged.bind(this), opts);
-    eventBus._on("filterviewactivated", () => {
-      this.pdfFilterViewer?.loadHighlights();
+    eventBus._on("filterviewactivated", evt => {
+      // Load highlights with optional external data
+      this.pdfFilterViewer?.loadHighlights(evt?.highlightsData);
     }, opts);
 
     // Also load highlights when sidebar view changes to filter
-    eventBus._on("sidebarviewchanged", (evt) => {
-      if (evt.view === 4) { // SidebarView.FILTER = 4
-        this.pdfFilterViewer?.loadHighlights();
+    eventBus._on("sidebarviewchanged", evt => {
+      if (evt.view === 4) {
+        // SidebarView.FILTER = 4
+        this.pdfFilterViewer?.loadHighlights(evt?.highlightsData);
       }
     }, opts);
 
