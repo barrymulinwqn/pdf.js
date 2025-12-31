@@ -318,6 +318,15 @@ class FloatingToolbar {
       }
     );
 
+    this.#makeButton(
+      "saveSelectionButton",
+      `pdfjs-save-selection-floating-button`,
+      "pdfjs-save-selection-floating-button-label",
+      () => {
+        this.#uiManager.saveSelectionAsJson("floating_button");
+      }
+    );
+
     return editToolbar;
   }
 
