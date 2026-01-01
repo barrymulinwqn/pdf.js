@@ -68,5 +68,15 @@
     ],
     "page": 13,
     "text": "onclusions\nThis paper described how to run dynamic languages efﬁciently by\nrecording hot traces and generating type-specialized native code.\nOur techniq"
+  },
+  {
+    "location": [
+      315,
+      652,
+      239,
+      -43
+    ],
+    "page": 13,
+    "text": "nline threading (15) copies chunks of interpreter native code which implement the required bytecodes into a native code cache,thus acting as a simple per-method JIT compiler that eliminates the dispatch overhead."
   }
 ]
