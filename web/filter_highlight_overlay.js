@@ -23,6 +23,8 @@ class FilterHighlightOverlay {
 
   #currentOverlay = null;
 
+  #uiManager = null;
+
   constructor(eventBus) {
     this.#eventBus = eventBus;
     this.#addEventListeners();
@@ -31,6 +33,11 @@ class FilterHighlightOverlay {
   #addEventListeners() {
     this.#eventBus._on("filterhighlightselected", evt => {
       this.showHighlight(evt.pageNumber, evt.location);
+    });
+
+    // Listen for UI manager initialization
+    this.#eventBus._on("annotationeditoruimanager", ({ uiManager }) => {
+      this.#uiManager = uiManager;
     });
   }
 
@@ -43,18 +50,177 @@ class FilterHighlightOverlay {
     // Clear any existing highlight
     this.clearHighlight();
 
-    // Wait a bit for the page to be rendered and positioned
-    setTimeout(() => {
-      const pageView = this.#getPageView(pageNumber);
-      if (!pageView) {
-        return;
-      }
+    // Get the annotation editor UI manager
+    const uiManager = this.#uiManager || window.PDFViewerApplication?.pdfViewer?.annotationEditorUIManager;
 
-      const overlay = this.#createOverlayElement(pageView, location);
-      if (overlay) {
-        this.#currentOverlay = overlay;
+    if (!uiManager) {
+      console.error("UI Manager not initialized. Please enable annotation editing mode.");
+      return;
+    }
+
+    const pageView = this.#getPageView(pageNumber);
+    if (!pageView) {
+      console.error("Page view not found for page", pageNumber);
+      return;
+    }
+
+    // Wait for page to be rendered
+    if (!pageView.textLayer) {
+      console.warn("Text layer not ready, waiting...");
+      setTimeout(() => this.showHighlight(pageNumber, location), 100);
+      return;
+    }
+
+    // Get text layer and extract text nodes for the location
+    const textLayer = pageView.textLayer.div;
+    if (!textLayer) {
+      console.error("Text layer div not found");
+      return;
+    }
+
+    // Extract text from the location area
+    const textInfo = this.#extractTextFromLocation(textLayer, pageView, location);
+    if (!textInfo) {
+      console.error("Could not extract text from location", location);
+      return;
+    }
+
+    console.log("Extracted text info:", textInfo);
+
+    // Create a selection programmatically
+    const selection = document.getSelection();
+    selection.removeAllRanges();
+    const range = document.createRange();
+
+    try {
+      range.setStart(textInfo.anchorNode, textInfo.anchorOffset);
+      range.setEnd(textInfo.focusNode, textInfo.focusOffset);
+      selection.addRange(range);
+
+      console.log("Selection created:", selection.toString());
+
+      // Now use the UI manager's highlightSelection method
+      setTimeout(() => {
+        uiManager.highlightSelection("filter_view");
+        // Clear the selection
+        selection.removeAllRanges();
+      }, 100);
+
+    } catch (error) {
+      console.error("Error creating selection:", error);
+      selection.removeAllRanges();
+    }
+  }
+
+  /**
+   * Convert location coordinates to boxes format for highlight editor
+   * @param {Object} pageView - The PDF page view
+   * @param {Object} location - The location {x, y, width, height}
+   * @returns {Array|null}
+   */
+  #convertLocationToBoxes(pageView, location) {
+    if (!pageView.div) {
+      return null;
+    }
+
+    const { x, y, width, height } = location;
+    const viewport = pageView.viewport;
+
+    // Convert PDF coordinates to viewport coordinates
+    const [x1, y1] = viewport.convertToViewportPoint(x, y + height);
+    const [x2, y2] = viewport.convertToViewportPoint(x + width, y);
+
+    // Use viewport dimensions directly instead of getBoundingClientRect
+    const pageWidth = viewport.width;
+    const pageHeight = viewport.height;
+
+    // Calculate normalized coordinates (0-1 range) in one pass
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+
+    // Return in the format expected by the highlight editor
+    return [
+      {
+        x: minX / pageWidth,
+        y: minY / pageHeight,
+        width: Math.abs(x2 - x1) / pageWidth,
+        height: Math.abs(y2 - y1) / pageHeight,
+      },
+    ];
+  }
+
+  /**
+   * Extract text and text nodes from the location area
+   * @param {HTMLElement} textLayer - The text layer element
+   * @param {Object} pageView - The PDF page view
+   * @param {Object} location - The location {x, y, width, height}
+   * @returns {Object|null}
+   */
+  #extractTextFromLocation(textLayer, pageView, location) {
+    const { x, y, width, height } = location;
+    const viewport = pageView.viewport;
+
+    // Convert PDF coordinates to viewport coordinates
+    const [x1, y1] = viewport.convertToViewportPoint(x, y + height);
+    const [x2, y2] = viewport.convertToViewportPoint(x + width, y);
+
+    const overlayLeft = Math.min(x1, x2);
+    const overlayTop = Math.min(y1, y2);
+    const overlayWidth = Math.abs(x2 - x1);
+    const overlayHeight = Math.abs(y2 - y1);
+
+    // Get page rect for coordinate conversion
+    const pageRect = pageView.div.getBoundingClientRect();
+    const textLayerRect = textLayer.getBoundingClientRect();
+
+    // Find text elements that intersect with the location
+    const textElements = textLayer.querySelectorAll("span[role='presentation']");
+    let firstNode = null;
+    let firstOffset = 0;
+    let lastNode = null;
+    let lastOffset = 0;
+    let collectedText = "";
+
+    for (const span of textElements) {
+      const rect = span.getBoundingClientRect();
+
+      // Convert to page-relative coordinates
+      const spanLeft = rect.left - pageRect.left;
+      const spanTop = rect.top - pageRect.top;
+      const spanRight = rect.right - pageRect.left;
+      const spanBottom = rect.bottom - pageRect.top;
+
+      // Check if this text element intersects with our highlight area
+      if (
+        spanRight > overlayLeft &&
+        spanLeft < overlayLeft + overlayWidth &&
+        spanBottom > overlayTop &&
+        spanTop < overlayTop + overlayHeight
+      ) {
+        const textNode = span.firstChild;
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+          if (!firstNode) {
+            firstNode = textNode;
+            firstOffset = 0;
+          }
+          lastNode = textNode;
+          lastOffset = textNode.textContent.length;
+          collectedText += textNode.textContent;
+        }
       }
-    }, 500);
+    }
+
+    if (!firstNode || !lastNode) {
+      return null;
+    }
+
+    return {
+      anchorNode: firstNode,
+      anchorOffset: firstOffset,
+      focusNode: lastNode,
+      focusOffset: lastOffset,
+      text: collectedText.trim(),
+    };
   }
 
   /**
@@ -75,66 +241,15 @@ class FilterHighlightOverlay {
   }
 
   /**
-   * Create the highlight overlay element
-   * @param {Object} pageView - The PDF page view
-   * @param {Object} location - The location {x, y, width, height}
-   * @returns {HTMLElement|null}
-   */
-  #createOverlayElement(pageView, location) {
-    if (!pageView.div) {
-      return null;
-    }
-
-    const { x, y, width, height } = location;
-    const viewport = pageView.viewport;
-
-    // Convert PDF coordinates to viewport coordinates
-    // In highlights.json: location = [x, y, width, height]
-    // where y and height are negative (PDF bottom-left origin)
-    // We need to calculate the actual bottom and top positions
-    const left = x;
-    const bottom = y; // y is already negative, representing distance from bottom
-    const right = x + width;
-    const top = y + height; // height is negative, so this gives us the top
-
-    // Convert PDF points to viewport coordinates
-    const topLeft = viewport.convertToViewportPoint(left, top);
-    const bottomRight = viewport.convertToViewportPoint(right, bottom);
-
-    const overlay = document.createElement("div");
-    overlay.className = "filterHighlightOverlay";
-    overlay.style.position = "absolute";
-    overlay.style.left = `${Math.min(topLeft[0], bottomRight[0])}px`;
-    overlay.style.top = `${Math.min(topLeft[1], bottomRight[1])}px`;
-    overlay.style.width = `${Math.abs(bottomRight[0] - topLeft[0])}px`;
-    overlay.style.height = `${Math.abs(bottomRight[1] - topLeft[1])}px`;
-    overlay.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
-    overlay.style.border = "2px solid rgba(255, 200, 0, 0.8)";
-    overlay.style.pointerEvents = "none";
-    overlay.style.zIndex = "1000";
-    overlay.style.transition = "opacity 0.3s ease-in-out";
-
-    pageView.div.append(overlay);
-
-    // Fade in animation
-    requestAnimationFrame(() => {
-      overlay.style.opacity = "1";
-    });
-
-    return overlay;
-  }
-
-  /**
    * Clear the current highlight overlay
    */
   clearHighlight() {
     if (this.#currentOverlay) {
-      // Fade out before removing
-      this.#currentOverlay.style.opacity = "0";
-      setTimeout(() => {
-        this.#currentOverlay?.remove();
-        this.#currentOverlay = null;
-      }, 300);
+      // Remove editor or DOM element
+      if (typeof this.#currentOverlay.remove === 'function') {
+        this.#currentOverlay.remove();
+      }
+      this.#currentOverlay = null;
     }
   }
 }
