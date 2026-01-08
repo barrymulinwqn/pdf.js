@@ -542,12 +542,13 @@ const defaultOptions = {
   },
 };
 if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("MOZCENTRAL")) {
+  /*compressed.tracemonkey-pldi-09.pdf*/
   defaultOptions.defaultUrl = {
     /** @type {string} */
     value:
       typeof PDFJSDev !== "undefined" && PDFJSDev.test("CHROME")
         ? ""
-        : "compressed.tracemonkey-pldi-09.pdf",
+        : "test-1.pdf",
     kind: OptionKind.VIEWER,
   };
   defaultOptions.sandboxBundleSrc = {
