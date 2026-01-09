@@ -47,7 +47,7 @@ class FilterHighlightOverlay {
    * @param {Object} location - The location coordinates {x, y, width, height}
    *                            where x, y are in PDF coordinates from stored data
    */
-  showHighlight(pageNumber, location) {
+  async showHighlight(pageNumber, location) {
     // Clear any existing highlight
     this.clearHighlight();
 
@@ -65,10 +65,11 @@ class FilterHighlightOverlay {
       return;
     }
 
-    // Wait for page to be rendered
-    if (!pageView.textLayer) {
-      console.warn("Text layer not ready, waiting...");
-      setTimeout(() => this.showHighlight(pageNumber, location), 100);
+    // Wait for text layer to be fully rendered
+    try {
+      await this.#waitForTextLayer(pageView);
+    } catch (error) {
+      console.error("Failed to load text layer:", error);
       return;
     }
 
@@ -111,6 +112,55 @@ class FilterHighlightOverlay {
       console.error("Error creating selection:", error);
       selection.removeAllRanges();
     }
+  }
+
+  /**
+   * Wait for text layer to be rendered
+   * @param {Object} pageView - The PDF page view
+   * @returns {Promise<void>}
+   */
+  async #waitForTextLayer(pageView) {
+    // If text layer already exists and is rendered, return immediately
+    if (pageView.textLayer?.div) {
+      return;
+    }
+
+    // Wait for renderingState to be at least FINISHED (3)
+    if (pageView.renderingState < 3) {
+      await new Promise((resolve) => {
+        const checkRendering = () => {
+          if (pageView.renderingState >= 3) {
+            resolve();
+          } else {
+            setTimeout(checkRendering, 50);
+          }
+        };
+        checkRendering();
+      });
+    }
+
+    // Use the textLayerPromise if available
+    if (pageView.textLayer?.renderingDone) {
+      await pageView.textLayer.renderingDone;
+      return;
+    }
+
+    // Fallback: wait for textlayerrendered event
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Text layer rendering timeout"));
+      }, 5000);
+
+      const handler = (evt) => {
+        if (evt.pageNumber === pageView.id) {
+          clearTimeout(timeout);
+          this.#eventBus._off("textlayerrendered", handler);
+          resolve();
+        }
+      };
+
+      this.#eventBus._on("textlayerrendered", handler);
+    });
   }
 
   /**
