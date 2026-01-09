@@ -45,6 +45,7 @@ class FilterHighlightOverlay {
    * Show a temporary highlight overlay on the specified page
    * @param {number} pageNumber - The page number (1-indexed)
    * @param {Object} location - The location coordinates {x, y, width, height}
+   *                            where x, y are in PDF coordinates from stored data
    */
   showHighlight(pageNumber, location) {
     // Clear any existing highlight
@@ -115,7 +116,7 @@ class FilterHighlightOverlay {
   /**
    * Convert location coordinates to boxes format for highlight editor
    * @param {Object} pageView - The PDF page view
-   * @param {Object} location - The location {x, y, width, height}
+   * @param {Object} location - The location {x, y, width, height} in PDF coordinates
    * @returns {Array|null}
    */
   #convertLocationToBoxes(pageView, location) {
@@ -153,7 +154,7 @@ class FilterHighlightOverlay {
    * Extract text and text nodes from the location area
    * @param {HTMLElement} textLayer - The text layer element
    * @param {Object} pageView - The PDF page view
-   * @param {Object} location - The location {x, y, width, height}
+   * @param {Object} location - The location {x, y, width, height} in PDF coordinates
    * @returns {Object|null}
    */
   #extractTextFromLocation(textLayer, pageView, location) {

@@ -1432,15 +1432,24 @@ const PDFViewerApplication = {
       const height = selectionRect.height;
 
       // Convert to PDF page coordinates
+      // Note: PDF coordinate system has origin (0,0) at bottom-left corner
+      // - X-axis increases to the right
+      // - Y-axis increases upward (opposite of screen/DOM coordinates)
       const pdfCoords = pageView.getPagePoint(x, y);
       const pdfCoordsEnd = pageView.getPagePoint(x + width, y + height);
 
-      // Create location array [x, y, width, height] in PDF coordinates
+      // Create location array [x_left, y_top, x_right, y_bottom] in PDF coordinates
+      // Format: Absolute corner coordinates (bounding box)
+      // - x_left: distance from left edge of page
+      // - y_top: distance from bottom edge to TOP of selection
+      // - x_right: distance from left edge to RIGHT of selection
+      // - y_bottom: distance from bottom edge to BOTTOM of selection
+      // Width = x_right - x_left, Height = y_top - y_bottom
       const location = [
-        Math.round(pdfCoords[0]),
-        Math.round(pdfCoords[1]),
-        Math.round(pdfCoordsEnd[0] - pdfCoords[0]),
-        Math.round(pdfCoordsEnd[1] - pdfCoords[1]),
+        Math.round(pdfCoords[0]),      // x_left (from left edge)
+        Math.round(pdfCoords[1]),      // y_bottom (from bottom edge)
+        Math.round(pdfCoordsEnd[0]),   // x_right (from left edge)
+        Math.round(pdfCoordsEnd[1])   // y_top (from bottom edge)
       ];
 
       const data = {

@@ -95,17 +95,20 @@ class PDFFilterView {
       return;
     }
 
-    // location array format: [x, y, width, height]
+    // location array format: [x_left, y_bottom, x_right, y_top]
+    // This is the new format from saveSelectionAsJson in app.js
     if (location && Array.isArray(location) && location.length === 4) {
-      const [x, y, width, height] = location;
-      // In highlights.json: y and height are negative (PDF coordinate system)
-      // y is the distance from bottom, height is negative going upward
-      const top = y + height; // top of the highlight area
-      const bottom = y; // bottom of the highlight area
+      const [x_left, y_bottom, x_right, y_top] = location;
+      
+      // Calculate width and height from corner coordinates
+      const x = x_left;
+      const y = y_bottom;
+      const width = x_right - x_left;
+      const height = y_top - y_bottom;
 
       // Calculate center point of the highlight
-      const centerX = x + width / 2;
-      const centerY = (top + bottom) / 2;
+      const centerX = (x_left + x_right) / 2;
+      const centerY = (y_bottom + y_top) / 2;
 
       // Use XYZ destination to preserve current zoom level
       // Format: [pageRef, /XYZ, left, top, zoom]
@@ -119,6 +122,7 @@ class PDFFilterView {
       });
 
       // Dispatch event to draw temporary highlight overlay
+      // Convert to object format for the event
       this.eventBus.dispatch("filterhighlightselected", {
         source: this,
         pageNumber: page,
