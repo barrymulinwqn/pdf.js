@@ -126,6 +126,7 @@ class PDFFilterView {
       this.eventBus.dispatch("filterhighlightselected", {
         source: this,
         pageNumber: page,
+        id: this.highlightData.id,
         location: { x, y, width, height },
       });
     } else {
