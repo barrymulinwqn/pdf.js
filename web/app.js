@@ -1374,7 +1374,75 @@ const PDFViewerApplication = {
     classList.remove("wait");
   },
 
-  async saveSelectionAsJson() {
+  async saveSelectionAsJson(params = null) {
+
+    console.log("params:", params);
+
+    if(params?.methodOfCreation === "editor_save_button" && params?.editorInfo){
+      // If invoked from editor save button, and editorInfo is provided,
+
+      // Convert editorInfo into the expected data format
+
+
+
+      // use that info directly.
+      const data = {
+        page: params.editorInfo.pageNumber,
+        text: params.editorInfo.textContent,
+        location: params.editorInfo.locationArray,
+        timestamp: Date.now(),
+        documentUrl: this.url || window.location.href,
+      };
+
+       console.log("Selection data sent to parent window within Editor:", data);
+
+      // Transfer data to parent window if embedded
+      if (this.isViewerEmbedded && window.parent !== window) {
+        try {
+          // Send data to parent window via postMessage
+          window.parent.postMessage(
+            {
+              type: "pdfjs-selection",
+              source: "pdf.js",
+              data,
+            },
+            "*" // In production, replace '*' with specific origin for security
+          );
+          console.log("Selection data sent to parent window:", data);
+        } catch (postError) {
+          console.error("Error posting message to parent:", postError);
+        }
+      }
+
+      // Dispatch custom event that parent can listen to
+      try {
+        const customEvent = new CustomEvent("pdfselectioncaptured", {
+          bubbles: true,
+          cancelable: false,
+          detail: data,
+        });
+
+        // Try to dispatch at parent document if possible
+        if (this.isViewerEmbedded) {
+          try {
+            parent.document.dispatchEvent(customEvent);
+          } catch {
+            // Cross-origin restriction, dispatch locally
+            document.dispatchEvent(customEvent);
+          }
+        } else {
+          document.dispatchEvent(customEvent);
+        }
+      } catch (eventError) {
+        console.error("Error dispatching custom event:", eventError);
+      }
+
+      console.log("Selection saved and transferred (from editor):", data);
+      return; // Exit after handling editor save button case
+
+    }
+
+
     try {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) {

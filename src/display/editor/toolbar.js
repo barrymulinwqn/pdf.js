@@ -147,6 +147,20 @@ class EditorToolbar {
     this.#buttons.append(button);
   }
 
+  addSaveButton(saveButton) {
+    if (!saveButton) {
+      return;
+    }
+    saveButton.classList.add("basic", "saveButton");
+    this.#addListenersToElement(saveButton);
+    this.#buttons.append(saveButton);
+  }
+
+  removeSaveButton() {
+    const saveButton = this.#buttons.querySelector(".saveButton");
+    saveButton?.remove();
+  }
+
   get #divider() {
     const divider = document.createElement("div");
     divider.className = "divider";
@@ -231,6 +245,11 @@ class EditorToolbar {
       case "comment":
         if (tool) {
           this.addComment(tool);
+        }
+        break;
+      case "save":
+        if (tool) {
+          this.addSaveButton(tool);
         }
         break;
     }

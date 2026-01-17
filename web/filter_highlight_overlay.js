@@ -81,6 +81,8 @@ class FilterHighlightOverlay {
     }
 
     // Extract text from the location area
+    console.log("Extracting text from location:", location);
+    
     const textInfo = this.#extractTextFromLocation(textLayer, pageView, location);
     if (!textInfo) {
       console.error("Could not extract text from location", location);

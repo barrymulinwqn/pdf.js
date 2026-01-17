@@ -57,6 +57,8 @@ class AnnotationEditor {
 
   #commentStandaloneButton = null;
 
+  #saveSelectionButton = null;
+
   #disabled = false;
 
   #dragPointerId = null;
@@ -1072,15 +1074,16 @@ class AnnotationEditor {
     this._editToolbar = new EditorToolbar(this);
     this.div.append(this._editToolbar.render());
     const { toolbarButtons } = this;
-    if (toolbarButtons) {
-      for (const [name, tool] of toolbarButtons) {
-        await this._editToolbar.addButton(name, tool);
-      }
-    }
-    if (!this.hasComment) {
-      this._editToolbar.addButton("comment", this.addCommentButton());
-    }
-    this._editToolbar.addButton("delete");
+    // if (toolbarButtons) {
+    //   for (const [name, tool] of toolbarButtons) {
+    //     await this._editToolbar.addButton(name, tool);
+    //   }
+    // }
+    // if (!this.hasComment) {
+    //   this._editToolbar.addButton("comment", this.addCommentButton());
+    // }
+    this._editToolbar.addButton("save", this.addSaveSelectionButton());
+    // this._editToolbar.addButton("delete");
 
     return this._editToolbar;
   }
@@ -1201,6 +1204,52 @@ class AnnotationEditor {
 
   hideStandaloneCommentButton() {
     this.#commentStandaloneButton?.classList.add("hidden");
+  }
+
+  addSaveSelectionButton() {
+    const button = document.createElement("button");
+    button.className = "saveSelectionButton";
+    button.textContent = "Save";
+    button.title = "Save selection as JSON";
+    button.tabIndex = 0;
+    
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      
+      // Access editor and layer information
+      const editorInfo = {
+        editorId: this.id,              // The unique ID of this editor
+        editorType: this.editorType,    // The type of editor (e.g., "highlight")
+        pageIndex: this.pageIndex,      // The page number (0-based)
+        parent: this.parent,            // The AnnotationEditorLayer containing this editor
+        x: this.x,                      // X position
+        y: this.y,                      // Y position
+        width: this.width,              // Width if applicable
+        height: this.height,            // Height if applicable
+      };
+      
+      // Pass the editor context to saveSelectionAsJson
+      this._uiManager.saveSelectionAsJson("editor_save_button", editorInfo);
+    });
+
+    return button;
+  }
+
+  addSaveButtonInToolbar() {
+    if (this.#saveSelectionButton) {
+      return;
+    }
+    const button = this.addSaveSelectionButton();
+    this._editToolbar?.addSaveButton(button);
+    this.#saveSelectionButton = button;
+  }
+
+  removeSaveButtonFromToolbar() {
+    if (!this.#saveSelectionButton) {
+      return;
+    }
+    this._editToolbar?.removeSaveButton();
+    this.#saveSelectionButton = null;
   }
 
   get comment() {

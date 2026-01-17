@@ -1380,8 +1380,10 @@ class AnnotationEditorUIManager {
     this.#floatingToolbar?.hide();
   }
 
-  saveSelectionAsJson(methodOfCreation = "") {
-    this._eventBus.dispatch("saveselectionasjson", { source: this });
+  saveSelectionAsJson(methodOfCreation = "", editorInfo = null) {
+    this._eventBus.dispatch("saveselectionasjson", { source: this, 
+      methodOfCreation,
+      editorInfo });
   }
 
   #displayFloatingToolbar() {
