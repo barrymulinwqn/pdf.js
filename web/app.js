@@ -1382,14 +1382,62 @@ const PDFViewerApplication = {
       // If invoked from editor save button, and editorInfo is provided,
 
       // Convert editorInfo into the expected data format
+      const { editorInfo } = params;
+      
+      // Get the page view to convert coordinates (same as text selection logic)
+      const pageView = this.pdfViewer.getPageView(editorInfo.pageIndex);
+      if (!pageView) {
+        console.warn("Could not find page view for editor");
+        return;
+      }
 
+      // Find the page element to get text layer reference
+      const pageElement = this.pdfViewer.viewer.querySelector(
+        `.page[data-page-number="${editorInfo.pageNumber}"]`
+      );
+      if (!pageElement) {
+        console.warn("Could not find page element for editor");
+        return;
+      }
 
+      const textLayer = pageElement.querySelector(".textLayer");
+      if (!textLayer) {
+        console.warn("Could not find text layer for editor");
+        return;
+      }
+
+      // Get text layer bounding rect for coordinate conversion
+      const textLayerRect = textLayer.getBoundingClientRect();
+      
+      // Calculate relative position within the text layer (same logic as text selection)
+      const x = editorInfo.screenRect.left - textLayerRect.left;
+      const y = editorInfo.screenRect.top - textLayerRect.top;
+      const width = editorInfo.screenRect.width;
+      const height = editorInfo.screenRect.height;
+
+      // Convert to PDF page coordinates using pageView.getPagePoint
+      // (Same conversion logic as in the text selection case)
+      const pdfCoords = pageView.getPagePoint(x, y);
+      const pdfCoordsEnd = pageView.getPagePoint(x + width, y + height);
+
+      // Create location array [x_left, y_bottom, x_right, y_top] in PDF coordinates
+      // Format: Absolute corner coordinates (bounding box)
+      // - x_left: distance from left edge of page
+      // - y_bottom: distance from bottom edge to BOTTOM of selection
+      // - x_right: distance from left edge to RIGHT of selection
+      // - y_top: distance from bottom edge to TOP of selection
+      const location = [
+        Math.round(pdfCoords[0]),      // x_left (from left edge)
+        Math.round(pdfCoords[1]),      // y_bottom (from bottom edge)
+        Math.round(pdfCoordsEnd[0]),   // x_right (from left edge)
+        Math.round(pdfCoordsEnd[1])    // y_top (from bottom edge)
+      ];
 
       // use that info directly.
       const data = {
-        page: params.editorInfo.pageNumber,
-        text: params.editorInfo.textContent,
-        location: params.editorInfo.locationArray,
+        page: editorInfo.pageNumber,
+        text: editorInfo.textContent,
+        location,
         timestamp: Date.now(),
         documentUrl: this.url || window.location.href,
       };

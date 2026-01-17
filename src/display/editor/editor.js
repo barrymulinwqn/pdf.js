@@ -1216,16 +1216,31 @@ class AnnotationEditor {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       
+      // Get the div's bounding rectangle in screen coordinates
+      const editorRect = this.div.getBoundingClientRect();
+      
       // Access editor and layer information
       const editorInfo = {
         editorId: this.id,              // The unique ID of this editor
         editorType: this.editorType,    // The type of editor (e.g., "highlight")
         pageIndex: this.pageIndex,      // The page number (0-based)
+        pageNumber: this.pageIndex + 1, // 1-based page number
         parent: this.parent,            // The AnnotationEditorLayer containing this editor
-        x: this.x,                      // X position
-        y: this.y,                      // Y position
-        width: this.width,              // Width if applicable
-        height: this.height,            // Height if applicable
+        x: this.x,                      // X position (normalized 0-1)
+        y: this.y,                      // Y position (normalized 0-1)
+        width: this.width,              // Width (normalized 0-1)
+        height: this.height,            // Height (normalized 0-1)
+        // Screen coordinates for conversion to PDF coordinates
+        screenRect: {
+          left: editorRect.left,
+          top: editorRect.top,
+          right: editorRect.right,
+          bottom: editorRect.bottom,
+          width: editorRect.width,
+          height: editorRect.height,
+        },
+        // Text content if available
+        textContent: this.div.textContent || "",
       };
       
       // Pass the editor context to saveSelectionAsJson
