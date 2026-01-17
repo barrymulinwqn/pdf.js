@@ -156,6 +156,11 @@ class HighlightEditor extends AnnotationEditor {
     return { numberOfColors: data.get("color").size };
   }
 
+  /** @inheritdoc */
+  get contentText() {
+    return this.#text;
+  }
+
   #createOutlines() {
     const outliner = new HighlightOutliner(
       this.#boxes,

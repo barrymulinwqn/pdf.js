@@ -1219,6 +1219,23 @@ class AnnotationEditor {
       // Get the div's bounding rectangle in screen coordinates
       const editorRect = this.div.getBoundingClientRect();
       
+      // Get the text content from the editor
+      // Different editor types store text differently
+      let selectedText = "";
+      
+      // For HighlightEditor, use the contentText getter
+      if (this.contentText) {
+        selectedText = this.contentText;
+      }
+      // For FreeTextEditor and others, try contentDiv
+      else if (this.contentDiv) {
+        selectedText = this.contentDiv.textContent || "";
+      }
+      // Fallback to div.textContent
+      else {
+        selectedText = this.div.textContent || "";
+      }
+      
       // Access editor and layer information
       const editorInfo = {
         editorId: this.id,              // The unique ID of this editor
@@ -1240,7 +1257,7 @@ class AnnotationEditor {
           height: editorRect.height,
         },
         // Text content if available
-        textContent: this.div.textContent || "",
+        textContent: selectedText,
       };
       
       // Pass the editor context to saveSelectionAsJson
