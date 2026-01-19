@@ -65,8 +65,9 @@ class FilterHighlightOverlay {
           const exists = highlightDivIds.some(item => item.highlightDivId === divId);
           if (!exists) {
             highlightDivIds.push({ textId: id, highlightDivId: divId });
+            console.log(`DEBUG - Found HighlightEditor with div ID and pushed it:`, { textId: id, highlightDivId: divId });
           }
-          console.log(`DEBUG - Found HighlightEditor with div ID:`, { textId: id, highlightDivId: divId });
+          
         }
       }
     }
