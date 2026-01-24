@@ -1209,8 +1209,8 @@ class AnnotationEditor {
   addSaveSelectionButton() {
     const button = document.createElement("button");
     button.className = "saveSelectionButton";
-    button.textContent = "Save";
-    button.title = "Save selection as JSON";
+    button.textContent = "Highlight Post Event";
+    button.title = "Post Event with selection content";
     button.tabIndex = 0;
     
     button.addEventListener("click", (event) => {

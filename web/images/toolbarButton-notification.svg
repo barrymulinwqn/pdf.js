@@ -1,0 +1,7 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bell icon for notifications -->
+  <path d="M8 1.5a2.5 2.5 0 0 0-2.5 2.5v.5c0 .55-.22 1.07-.61 1.46L3.1 7.21A1 1 0 0 0 3.6 8.7h8.8a1 1 0 0 0 .5-1.49l-1.79-1.24A2.25 2.25 0 0 1 10.5 4.5v-.5A2.5 2.5 0 0 0 8 1.5z" fill="black"/>
+  <path d="M6.5 11.25a1.75 1.75 0 0 0 3 0" fill="black"/>
+  <!-- Notification dot -->
+  <circle cx="12.5" cy="3.5" r="1.75" fill="black" />
+</svg>

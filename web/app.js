@@ -1387,7 +1387,7 @@ const PDFViewerApplication = {
       // Get the page view to convert coordinates (same as text selection logic)
       const pageView = this.pdfViewer.getPageView(editorInfo.pageIndex);
       if (!pageView) {
-        console.warn("Could not find page view for editor");
+        console.warn("Could not find page view for editor highlight");
         return;
       }
 
@@ -1396,13 +1396,13 @@ const PDFViewerApplication = {
         `.page[data-page-number="${editorInfo.pageNumber}"]`
       );
       if (!pageElement) {
-        console.warn("Could not find page element for editor");
+        console.warn("Could not find page element for editor highlight");
         return;
       }
 
       const textLayer = pageElement.querySelector(".textLayer");
       if (!textLayer) {
-        console.warn("Could not find text layer for editor");
+        console.warn("Could not find text layer for editor highlight");
         return;
       }
 
@@ -1442,7 +1442,7 @@ const PDFViewerApplication = {
         documentUrl: this.url || window.location.href,
       };
 
-       console.log("Selection data sent to parent window within Editor:", data);
+       console.log("Selection data sent to parent window within Editor highlight:", data);
 
       // Transfer data to parent window if embedded
       if (this.isViewerEmbedded && window.parent !== window) {
@@ -1450,21 +1450,21 @@ const PDFViewerApplication = {
           // Send data to parent window via postMessage
           window.parent.postMessage(
             {
-              type: "pdfjs-selection",
+              type: "pdfjs-selection-highlight-event",
               source: "pdf.js",
               data,
             },
             "*" // In production, replace '*' with specific origin for security
           );
-          console.log("Selection data sent to parent window:", data);
+          console.log("Selection data sent to parent window within Editor highlight:", data);
         } catch (postError) {
-          console.error("Error posting message to parent:", postError);
+          console.error("Error posting message to parent within Editor highlight:", postError);
         }
       }
 
       // Dispatch custom event that parent can listen to
       try {
-        const customEvent = new CustomEvent("pdfselectioncaptured", {
+        const customEvent = new CustomEvent("pdfjs-selection-highlight-event", {
           bubbles: true,
           cancelable: false,
           detail: data,
@@ -1482,10 +1482,10 @@ const PDFViewerApplication = {
           document.dispatchEvent(customEvent);
         }
       } catch (eventError) {
-        console.error("Error dispatching custom event:", eventError);
+        console.error("Error dispatching custom event within Editor highlight:", eventError);
       }
 
-      console.log("Selection saved and transferred (from editor):", data);
+      console.log("Selection saved and transferred (from editor highlight):", data);
       return; // Exit after handling editor save button case
 
     }
